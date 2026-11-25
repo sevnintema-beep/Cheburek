@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Чебуречная</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(160deg,#1a1a2e,#16213e,#0f3460);
+    color:#fff; min-height:100vh; overflow-x:hidden; user-select:none;
+  }
+  #app { max-width:480px; margin:0 auto; padding:12px; padding-bottom:90px; }
+  .topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(255,255,255,.07); border-radius:16px; padding:12px 16px; margin-bottom:12px;
+    border:1px solid rgba(255,255,255,.1);
+  }
+  .money { font-size:22px; font-weight:800; color:#ffd166; }
+  .money small { font-size:12px; color:#8be9a0; font-weight:600; }
+  .day { font-size:13px; color:#a0b0c0; text-align:right; }
+  .day b { color:#fff; }
+  .card {
+    background:rgba(255,255,255,.07); border-radius:16px; padding:14px; margin-bottom:12px;
+    border:1px solid rgba(255,255,255,.1);
+  }
+  .card h3 { font-size:13px; color:#a0b0c0; font-weight:600; margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; }
+  .btn {
+    background:linear-gradient(135deg,#ff6b35,#ff3860); color:#fff; border:none;
+    padding:10px 14px; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer;
+    transition:transform .1s; white-space:nowrap;
+  }
+  .btn:active { transform:scale(.95); }
+  .btn:disabled { opacity:.35; }
+  .btn.green { background:linear-gradient(135deg,#2ecc71,#27ae60); }
+  .btn.blue { background:linear-gradient(135deg,#4facfe,#00c6ff); }
+  .btn.gray { background:rgba(255,255,255,.12); }
+  .btn.small { padding:7px 10px; font-size:12px; }
+
+  /* Зона клиентов */
+  #customerZone { min-height:140px; position:relative; display:flex; flex-wrap:wrap; gap:8px; }
+  .cust {
+    width:calc(50% - 4px); background:rgba(255,255,255,.09); border-radius:14px; padding:10px;
+    border:1px solid rgba(255,255,255,.12); animation:pop .25s ease-out; cursor:pointer;
+    position:relative; overflow:hidden;
+  }
+  @keyframes pop { from { transform:scale(.85); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .cust:active { background:rgba(255,255,255,.18); }
+  .cust .emoji { font-size:26px; }
+  .cust .who { font-size:12px; font-weight:700; margin-top:2px; }
+  .cust .order { font-size:11px; color:#ffd166; margin-top:3px; }
+  .cust .timebar { position:absolute; bottom:0; left:0; height:4px; background:#2ecc71; transition:width .3s linear; }
+  .cust.angry { animation:shake .3s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .cust.urgent .timebar { background:#e74c3c; }
+
+  .empty-msg { width:100%; text-align:center; color:#6a7a88; font-size:13px; padding:40px 0; }
+
+  /* Телефон */
+  #phoneOverlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:300;
+    display:none; align-items:center; justify-content:center; padding:16px;
+  }
+  #phoneOverlay.show { display:flex; }
+  .phone {
+    width:100%; max-width:340px; background:#0d1117; border-radius:32px; padding:16px;
+    border:6px solid #222; box-shadow:0 20px 60px rgba(0,0,0,.6); max-height:80vh; overflow-y:auto;
+  }
+  .phone h2 { font-size:16px; text-align:center; margin-bottom:12px; color:#a0b0c0; }
+  .report-row { display:flex; justify-content:space-between; padding:7px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,.06); }
+  .report-row .neg { color:#ff6b6b; }
+  .report-row .pos { color:#8be9a0; }
+  .report-total { display:flex; justify-content:space-between; padding:10px 0; font-size:15px; font-weight:800; margin-top:6px; }
+
+  .tabbar {
+    position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto;
+    display:flex; background:rgba(20,25,40,.97);
+    border-top:1px solid rgba(255,255,255,.1); padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  .tab { flex:1; text-align:center; padding:6px; cursor:pointer; color:#6a7a88; font-size:10px; font-weight:600; }
+  .tab.active { color:#ffd166; }
+  .tab .ti { font-size:19px; display:block; margin-bottom:2px; }
+
+  .hidden { display:none !important; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; }
+  .row + .row { border-top:1px solid rgba(255,255,255,.06); }
+  .row .name { font-size:14px; font-weight:600; }
+  .row .sub { font-size:11px; color:#8a9aa8; margin-top:2px; }
+  .stat { background:rgba(255,255,255,.05); border-radius:12px; padding:10px; text-align:center; }
+  .stat .v { font-size:17px; font-weight:800; color:#ffd166; }
+  .stat .l { font-size:10px; color:#8a9aa8; text-transform:uppercase; margin-top:2px; }
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+  .toast {
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(100px);
+    background:#2ecc71; color:#fff; padding:11px 20px; border-radius:14px;
+    font-weight:700; font-size:13px; transition:transform .3s; z-index:400;
+    box-shadow:0 8px 30px rgba(46,204,113,.4); max-width:90%; text-align:center;
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  .toast.err { background:#e74c3c; box-shadow:0 8px 30px rgba(231,76,60,.4); }
+
+  #startScreen {
+    position:fixed; inset:0; background:linear-gradient(160deg,#1a1a2e,#0f3460); z-index:500;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;
+  }
+  #startScreen h1 { font-size:28px; margin-bottom:6px; text-align:center; }
+  #startScreen p { color:#a0b0c0; font-size:13px; margin-bottom:24px; text-align:center; }
+  #nameInput {
+    width:100%; max-width:300px; padding:14px; border-radius:14px; border:2px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.1); color:#fff; font-size:16px; text-align:center; margin-bottom:16px; outline:none;
+  }
+  #nameInput:focus { border-color:#ffd166; }
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <h1>🥟 Чебуречная</h1>
+  <p>Назови свою точку и начни бизнес с нуля</p>
+  <input id="nameInput" maxlength="18" placeholder="Название чебуречной" value="У Ашота">
+  <button class="btn green" style="padding:14px 40px;font-size:16px;" onclick="startGame()">Начать</button>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="money" id="money">0 ₽</div>
+      <small id="cafeName" style="font-size:12px;color:#8be9a0;"></small>
+    </div>
+    <div class="day">День <b id="day">1</b> · <span id="clock">09:00</span><br><span id="reputation">⭐ 0</span></div>
+  </div>
+
+  <!-- ТОЧКА -->
+  <div id="tab-main">
+    <div class="card" style="padding:10px 14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#a0b0c0;">
+        <span>👥 Поток: <b id="flowLabel" style="color:#ffd166;">средний</b></span>
+        <span>📍 <b id="locLabel" style="color:#4facfe;">—</b></span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Клиенты</h3>
+      <div id="customerZone">
+        <div class="empty-msg">Пока никого... ждём поток</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПРОКАЧКА -->
+  <div id="tab-upgrades" class="hidden">
+    <div class="card">
+      <h3>⚡ Улучшения</h3>
+      <div id="upgradeList"></div>
+    </div>
+  </div>
+
+  <!-- БИЗНЕС -->
+  <div id="tab-biz" class="hidden">
+    <div class="card">
+      <h3>📍 Локации (аренда)</h3>
+      <div id="locList"></div>
+    </div>
+    <div class="card">
+      <h3>🚀 Развитие</h3>
+      <div id="bizList"></div>
+    </div>
+  </div>
+
+  <!-- СТАФФ -->
+  <div id="tab-staff" class="hidden">
+    <div class="card">
+      <h3>👨‍🍳 Персонал</h3>
+      <div id="staffList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tabbar">
+  <div class="tab active" data-tab="main"><span class="ti">🥟</span>Точка</div>
+  <div class="tab" data-tab="upgrades"><span class="ti">⚡</span>Прокачка</div>
+  <div class="tab" data-tab="biz"><span class="ti">🏪</span>Бизнес</div>
+  <div class="tab" data-tab="staff"><span class="ti">👨‍🍳</span>Стафф</div>
+  <div class="tab" onclick="openPhone()"><span class="ti">📱</span>Телефон</div>
+</div>
+
+<div id="phoneOverlay" onclick="if(event.target===this)closePhone()">
+  <div class="phone">
+    <h2>📊 Отчёт за день <span id="reportDay"></span></h2>
+    <div id="reportBody"></div>
+    <button class="btn gray" style="width:100%;margin-top:14px;" onclick="closePhone()">Закрыть</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ================== СОСТОЯНИЕ ==================
+let S = null;
+
+const LOCATIONS = [
+  { id:'yard',    name:'Дворы',           rent:200,  flow:0.55, price:1.0,  rep:0,  desc:'Дёшево, но людей мало' },
+  { id:'street',  name:'Обычная улица',   rent:600,  flow:1.0,  price:1.0,  rep:0,  desc:'Средний поток, средняя аренда' },
+  { id:'market',  name:'У рынка',         rent:1500, flow:1.6,  price:1.15, rep:5,  desc:'Людно, дороже аренда' },
+  { id:'center',  name:'Центр города',    rent:4000, flow:2.4,  price:1.4,  rep:15, desc:'Очень людно, высокая аренда' },
+];
+
+const MENU_ITEMS = {
+  cheb:  { name:'Чебурек',  emoji:'🥟', cost:12, price:30 },
+  tea:   { name:'Чай',      emoji:'🍵', cost:3,  price:15 },
+  combo: { name:'Чебурек+чай', emoji:'🥟🍵', cost:15, price:42 },
+};
+
+const NAMES = ['Ашот','Марина','Дима','Олег','Катя','Сергей','Люба','Тимур','Аня','Вова','Зина','Рустам','Настя','Петя','Гуля'];
+const FACES = ['🧑','👩','👨','🧔','👱‍♀️','👴','👵','🧑‍🦱','👨‍🦰','👩‍🦳'];
+
+const UPGRADES = [
+  { id:'tap',   name:'🥟 Быстрее готовим', desc:'+1 заказ за раз',    cost:()=>80*Math.pow(1.7,S.up.tap),  buy:()=>S.up.tap++ },
+  { id:'price', name:'💰 Наценка',          desc:'+5 ₽ к цене',        cost:()=>150*Math.pow(1.9,S.up.price),buy:()=>S.up.price++ },
+  { id:'staff', name:'👨‍🍳 Повар',          desc:'+1 повар (пассив)',  cost:()=>300*Math.pow(1.6,S.up.staff), buy:()=>S.up.staff++ },
+  { id:'auto',  name:'🚀 Автоматизация',    desc:'×1.4 пассив',        cost:()=>800*Math.pow(2.0,S.up.auto), buy:()=>S.up.auto++ },
+  { id:'menu',  name:'🍵 Добавить чай',     desc:'Открыть чай в меню', cost:()=>1200, buy:()=>S.menu.tea=true },
+  { id:'combo', name:'🎁 Комбо-набор',      desc:'Чебурек+чай вместе', cost:()=>3000, buy:()=>S.menu.combo=true },
+];
+
+const BIZ = [
+  { id:'delivery', name:'🛵 Доставка',     desc:'Заказы на дом',          cost:5000,  rep:5 },
+  { id:'kiosk',    name:'🏪 Второй киоск', desc:'+2 повара',              cost:8000,  rep:8 },
+  { id:'cafe',     name:'☕ Кафе',         desc:'×1.5 к цене',            cost:20000, rep:12 },
+  { id:'chain',    name:'🏬 Сеть',         desc:'×3 к пассиву',           cost:60000, rep:20 },
+];
+
+const DIFFICULTIES = [
+  { id:'sanitary', name:'🧹 Санитарная проверка', desc:'Штраф 500 ₽' },
+  { id:'broken',   name:'🔧 Сломалась плита',    desc:'Поток упал на 30 сек' },
+  { id:'compet',   name:'🏪 Открылся конкурент', desc:'Цены -20% на 30 сек' },
+  { id:'spoiled',  name:'🥟 Испортились продукты',desc:'Потеря 300 ₽' },
+];
+
+// ================== СТАРТ ==================
+function startGame() {
+  const name = document.getElementById('nameInput').value.trim() || 'Чебуречная';
+  localStorage.setItem('cheb_name', name);
+  S = {
+    cafeName: name,
+    money: 500,
+    day: 1,
+    rep: 0,
+    sold: 0,
+    loc: 'yard',
+    ownedLocs: ['yard'],
+    menu: { cheb:true, tea:false, combo:false },
+    biz: { delivery:false, kiosk:false, cafe:false, chain:false },
+    up: { tap:1, price:0, staff:0, auto:0 },
+    staff: 0,
+    customers: [],
+    orders: [],
+    flowMult: 1,
+    flowMultTimer: 0,
+    priceMult: 1,
+    priceMultTimer: 0,
+    dayReport: { revenue:0, products:0, oil:0, electricity:0, rent:0, salary:0, delivery:0 },
+    totalRevenue: 0,
+    time: 9, // часов
+    spawnTimer: 0,
+    orderTimer: 0,
+    dayLength: 60, // секунд на день
+    dayTimer: 0,
+    eventTimer: 20,
+    lastDaySummary: null,
+  };
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('cafeName').textContent = name;
+  document.getElementById('locLabel').textContent = getLoc().name;
+  render();
+  tickLoop();
+}
+
+function getLoc() { return LOCATIONS.find(l=>l.id===S.loc); }
+
+// ================== КЛИЕНТЫ ==================
+function spawnCustomer() {
+  const loc = getLoc();
+  const baseFlow = loc.flow * S.flowMult * (1 + S.rep*0.02);
+  // не всегда людно: рандом 0..1
+  if (Math.random() > baseFlow * 0.55) return;
+
+  const available = [];
+  if (S.menu.cheb) available.push('cheb');
+  if (S.menu.tea) available.push('tea');
+  if (S.menu.combo) available.push('combo');
+  const item = available[Math.floor(Math.random()*available.length)];
+
+  const isRegular = Math.random() < 0.25 && S.regulars && S.regulars.length > 0;
+  let name, face;
+  if (isRegular) {
+    const r = S.regulars[Math.floor(Math.random()*S.regulars.length)];
+    name = r.name; face = r.face;
+  } else {
+    name = NAMES[Math.floor(Math.random()*NAMES.length)];
+    face = FACES[Math.floor(Math.random()*FACES.length)];
+  }
+
+  // характер: терпение
+  const patience = 8 + Math.random()*8; // секунд
+  const cust = {
+    id: Date.now()+Math.random(),
+    name, face, item,
+    patienceMax: patience,
+    patience: patience,
+    mood: Math.random() < 0.1 ? 'angry' : 'normal',
+  };
+  S.customers.push(cust);
+  renderCustomers();
+
+  // запомнить постоянного
+  if (!S.regulars) S.regulars = [];
+  if (!isRegular && Math.random() < 0.3 && !S.regulars.find(r=>r.name===name)) {
+    S.regulars.push({name, face});
+  }
+}
+
+function serveCustomer(id) {
+  const idx = S.customers.findIndex(c=>c.id===id);
+  if (idx === -1) return;
+  const c = S.customers[idx];
+  const item = MENU_ITEMS[c.item];
+  const priceMult = getLoc().price * S.priceMult * (1 + S.up.price*0.08);
+  let price = Math.round(item.price * priceMult);
+  if (c.mood === 'angry') price = Math.round(price*0.85);
+
+  // расход продуктов
+  const cost = item.cost;
+  S.money += price - cost;
+  S.dayReport.revenue += price;
+  S.dayReport.products += cost;
+  S.dayReport.oil += 2;
+  S.totalRevenue += price;
+  S.sold++;
+  S.rep = Math.floor(S.sold / 10);
+
+  S.customers.splice(idx,1);
+  showFloat('+' + price + ' ₽', '#8be9a0');
+  renderCustomers();
+  render();
+}
+
+function failCustomer(id) {
+  const idx = S.customers.findIndex(c=>c.id===id);
+  if (idx === -1) return;
+  const c = S.customers[idx];
+  S.rep = Math.max(0, S.rep - 1);
+  S.customers.splice(idx,1);
+  showFloat('− репутация', '#ff6b6b');
+  renderCustomers();
+  render();
+}
+
+// ================== ДОСТАВКА ==================
+function spawnOrder() {
+  if (!S.biz.delivery) return;
+  const available = [];
+  if (S.menu.cheb) available.push('cheb');
+  if (S.menu.tea) available.push('tea');
+  if (S.menu.combo) available.push('combo');
+  const item = available[Math.floor(Math.random()*available.length)];
+  const order = {
+    id: Date.now()+Math.random(),
+    addr: ['ул. Ленина 5','пр. Мира 12','ул. Садовая 3','пер. Тихий 7','ул. Гагарина 22'][Math.floor(Math.random()*5)],
+    item,
+    timeLeft: 25,
+    timeMax: 25,
+  };
+  S.orders.push(order);
+  renderOrders();
+}
+
+function deliverOrder(id) {
+  const idx = S.orders.findIndex(o=>o.id===id);
+  if (idx === -1) return;
+  const o = S.orders[idx];
+  const item = MENU_ITEMS[o.item];
+  const price = Math.round(item.price * 1.3);
+  const courierCost = 15;
+  S.money += price - courierCost;
+  S.dayReport.revenue += price;
+  S.dayReport.delivery += courierCost;
+  S.sold++;
+  S.orders.splice(idx,1);
+  showFloat('+' + price + ' ₽ (доставка)', '#4facfe');
+  renderOrders();
+  render();
+}
+
+// ================== ЭКОНОМИКА ДНЯ ==================
+function endDay() {
+  const loc = getLoc();
+  const rent = loc.rent;
+  const salary = S.staff * 100;
+  const electricity = 80 + S.sold * 2;
+  S.dayReport.rent += rent;
+  S.dayReport.salary += salary;
+  S.dayReport.electricity += electricity;
+
+  const totalExp = S.dayReport.products + S.dayReport.oil + S.dayReport.electricity + S.dayReport.rent + S.dayReport.salary + S.dayReport.delivery;
+  const profit = S.dayReport.revenue - totalExp;
+
+  S.money -= totalExp;
+  S.day++;
+
+  // сохранить отчёт
+  S.lastDaySummary = { ...S.dayReport, totalExp, profit };
+
+  // сброс
+  S.dayReport = { revenue:0, products:0, oil:0, electricity:0, rent:0, salary:0, delivery:0 };
+  S.customers = [];
+  S.orders = [];
+  S.time = 9;
+  renderCustomers();
+  renderOrders();
+
+  showToast('День окончен. Прибыль: ' + profit + ' ₽', profit >= 0 ? false : true);
+  render();
+}
+
+// ================== СОБЫТИЯ / ТРУДНОСТИ ==================
+function triggerEvent() {
+  if (Math.random() > 0.4) return;
+  const ev = DIFFICULTIES[Math.floor(Math.random()*DIFFICULTIES.length)];
+  if (ev.id === 'sanitary') {
+    S.money -= 500;
+    showToast('🧹 Санитарная проверка! Штраф 500 ₽', true);
+  } else if (ev.id === 'broken') {
+    S.flowMult = 0.4;
+    S.flowMultTimer = 30;
+    showToast('🔧 Плита сломалась! Поток упал на 30 сек', true);
+  } else if (ev.id === 'compet') {
+    S.priceMult = 0.8;
+    S.priceMultTimer = 30;
+    showToast('🏪 Конкурент открылся! Цены −20% на 30 сек', true);
+  } else if (ev.id === 'spoiled') {
+    S.money -= 300;
+    showToast('🥟 Продукты испортились! −300 ₽', true);
+  }
+  render();
+}
+
+// ================== ЦИКЛ ==================
+function tickLoop() {
+  setInterval(() => {
+    if (!S) return;
+
+    // таймеры дебаффов
+    if (S.flowMultTimer > 0) { S.flowMultTimer--; if (S.flowMultTimer<=0) { S.flowMult=1; } }
+    if (S.priceMultTimer > 0) { S.priceMultTimer--; if (S.priceMultTimer<=0) { S.priceMult=1; } }
+
+    // время дня
+    S.dayTimer++;
+    if (S.dayTimer >= S.dayLength) {
+      S.dayTimer = 0;
+      endDay();
+    }
+    S.time = 9 + Math.floor((S.dayTimer / S.dayLength) * 12);
+    document.getElementById('clock').textContent = String(S.time).padStart(2,'0') + ':00';
+
+    // спавн клиентов
+    S.spawnTimer++;
+    const spawnInterval = 2.5 - getLoc().flow*0.5 - S.rep*0.01;
+    if (S.spawnTimer >= Math.max(0.8, spawnInterval) * 10) {
+      S.spawnTimer = 0;
+      if (S.customers.length < 6) spawnCustomer();
+    }
+
+    // терпение клиентов
+    let changed = false;
+    S.customers.forEach(c => {
+      c.patience -= 1;
+      if (c.patience <= 0) { failCustomer(c.id); changed = true; }
+    });
+    if (changed) renderCustomers();
+    else updatePatienceBars();
+
+    // заказы доставки
+    if (S.biz.delivery) {
+      S.orderTimer++;
+      if (S.orderTimer >= 120) { // каждые ~12 сек
+        S.orderTimer = 0;
+        if (S.orders.length < 4) spawnOrder();
+      }
+      S.orders.forEach(o => {
+        o.timeLeft--;
+        if (o.timeLeft <= 0) {
+          const i = S.orders.indexOf(o);
+          if (i>-1) { S.orders.splice(i,1); renderOrders(); }
+        }
+      });
+      updateOrderBars();
+    }
+
+    // события
+    S.eventTimer--;
+    if (S.eventTimer <= 0) {
+      S.eventTimer = 25 + Math.random()*20;
+      triggerEvent();
+    }
+
+    // пассивный доход (повара)
+    if (S.staff > 0) {
+      const passive = S.staff * 0.3 * (1 + S.up.auto*0.4);
+      S.money += passive;
+      S.sold += passive*0.1;
+    }
+
+    render();
+  }, 1000);
+}
+
+// ================== РЕНДЕР ==================
+function render() {
+  if (!S) return;
+  document.getElementById('money').textContent = Math.floor(S.money).toLocaleString('ru') + ' ₽';
+  document.getElementById('day').textContent = S.day;
+  document.getElementById('reputation').textContent = '⭐ ' + S.rep;
+  document.getElementById('flowLabel').textContent = getFlowLabel();
+  document.getElementById('locLabel').textContent = getLoc().name;
+
+  // апгрейды
+  const ul = document.getElementById('upgradeList');
+  ul.innerHTML = '';
+  UPGRADES.forEach(u => {
+    if (u.id==='tea' && S.menu.tea) return;
+    if (u.id==='combo' && (S.menu.combo || !S.menu.tea)) return;
+    const cost = Math.floor(u.cost());
+    const ok = S.money >= cost;
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML = `<div><div class="name">${u.name}</div><div class="sub">${u.desc}</div></div>
+      <button class="btn ${ok?'green':''} small" ${ok?'':'disabled'} data-up="${u.id}">${cost.toLocaleString('ru')} ₽</button>`;
+    ul.appendChild(div);
+  });
+
+  // локации
+  const ll = document.getElementById('locList');
+  ll.innerHTML = '';
+  LOCATIONS.forEach(l => {
+    const owned = S.ownedLocs.includes(l.id);
+    const current = S.loc === l.id;
+    const canBuy = !owned && S.money >= l.rent*3;
+    let label = owned ? (current ? '✅ Здесь' : 'Выбрать') : (canBuy ? 'Арендовать' : 'Недоступно');
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML = `<div><div class="name">${l.name} ${current?'📍':''}</div>
+      <div class="sub">${l.desc} · аренда ${l.rent} ₽/день</div></div>
+      <button class="btn small ${owned?(current?'gray':'blue'):(canBuy?'green':'')}"
+        ${(!owned&&!canBuy)||current?'disabled':''} data-loc="${l.id}">${label}</button>`;
+    ll.appendChild(div);
+  });
+
+  // бизнесы
+  const bl = document.getElementById('bizList');
+  bl.innerHTML = '';
+  BIZ.forEach(b => {
+    const owned = S.biz[b.id];
+    const ok = S.money >= b.cost && !owned;
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML = `<div><div class="name">${b.name}</div><div class="sub">${b.desc}</div></div>
+      <button class="btn small ${owned?'blue':(ok?'green':'')}" ${owned||!ok?'disabled':''} data-biz="${b.id}">
+        ${owned?'✅':b.cost.toLocaleString('ru')+' ₽'}</button>`;
+    bl.appendChild(div);
+  });
+
+  // стафф
+  const sl = document.getElementById('staffList');
+  sl.innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'row';
+  d.innerHTML = `<div><div class="name">👨‍🍳 Повара: ${S.staff}</div>
+    <div class="sub">Пассив: ${(S.staff*0.3*(1+S.up.auto*0.4)).toFixed(1)} ₽/сек · зарплата ${S.staff*100} ₽/день</div></div>
+    <button class="btn green small" data-up="staff">Нанять 300 ₽</button>`;
+  sl.appendChild(d);
+}
+
+function getFlowLabel() {
+  const f = getLoc().flow * S.flowMult;
+  if (f < 0.8) return 'низкий';
+  if (f < 1.4) return 'средний';
+  return 'высокий';
+}
+
+function renderCustomers() {
+  const zone = document.getElementById('customerZone');
+  if (!S || S.customers.length === 0) {
+    zone.innerHTML = '<div class="empty-msg">Пока никого... ждём поток</div>';
+    return;
+  }
+  zone.innerHTML = '';
+  S.customers.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'cust' + (c.patience < c.patienceMax*0.3 ? ' urgent' : '');
+    div.dataset.id = c.id;
+    const pct = Math.max(0, (c.patience / c.patienceMax) * 100);
+    div.innerHTML = `<div class="emoji">${c.face}</div>
+      <div class="who">${c.name}</div>
+      <div class="order">${MENU_ITEMS[c.item].emoji} ${MENU_ITEMS[c.item].name}</div>
+      <div class="timebar" style="width:${pct}%"></div>`;
+    div.addEventListener('click', ()=>serveCustomer(c.id));
+    zone.appendChild(div);
+  });
+}
+
+function updatePatienceBars() {
+  document.querySelectorAll('.cust').forEach(el => {
+    const c = S.customers.find(x=>x.id===parseFloat(el.dataset.id));
+    if (!c) return;
+    const bar = el.querySelector('.timebar');
+    if (bar) {
+      const pct = Math.max(0, (c.patience / c.patienceMax) * 100);
+      bar.style.width = pct + '%';
+      if (pct < 30) el.classList.add('urgent');
+    }
+  });
+}
+
+// Доставка — отрисуем в отдельном блоке внутри "Точка" при наличии
+function renderOrders() {
+  if (!S || !S.biz.delivery) return;
+  let block = document.getElementById('ordersBlock');
+  if (!block) {
+    const main = document.getElementById('tab-main');
+    block = document.createElement('div');
+    block.className = 'card';
+    block.id = 'ordersBlock';
+    block.innerHTML = '<h3>🛵 Доставка</h3><div id="ordersList"></div>';
+    main.appendChild(block);
+  }
+  const list = document.getElementById('ordersList');
+  if (S.orders.length === 0) {
+    list.innerHTML = '<div class="empty-msg" style="padding:20px 0;">Заказов нет</div>';
+    return;
+  }
+  list.innerHTML = '';
+  S.orders.forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.dataset.oid = o.id;
+    const pct = (o.timeLeft/o.timeMax)*100;
+    div.innerHTML = `<div><div class="name">${MENU_ITEMS[o.item].emoji} ${o.addr}</div>
+      <div class="sub">${MENU_ITEMS[o.item].name} · ${o.timeLeft} сек</div></div>
+      <button class="btn blue small" data-oid="${o.id}">Отдать курьеру</button>`;
+    div.querySelector('button').addEventListener('click', ()=>deliverOrder(o.id));
+    list.appendChild(div);
+  });
+}
+
+function updateOrderBars() {
+  // обновляем текст времени
+  if (!S.biz.delivery) return;
+  document.querySelectorAll('#ordersList .row').forEach(el => {
+    const o = S.orders.find(x=>x.id===parseFloat(el.dataset.oid));
+    if (!o) return;
+    const sub = el.querySelector('.sub');
+    if (sub) sub.textContent = MENU_ITEMS[o.item].name + ' · ' + o.timeLeft + ' сек';
+  });
+}
+
+// ================== ТЕЛЕФОН ==================
+function openPhone() {
+  const r = S.lastDaySummary;
+  const body = document.getElementById('reportBody');
+  document.getElementById('reportDay').textContent = '#' + S.day;
+  if (!r) {
+    body.innerHTML = '<div style="text-align:center;color:#6a7a88;padding:20px 0;font-size:13px;">Первый день ещё идёт...<br>Отчёт появится после закрытия дня</div>';
+  } else {
+    body.innerHTML = `
+      <div class="report-row"><span>Выручка</span><span class="pos">+${r.revenue.toLocaleString('ru')} ₽</span></div>
+      <div class="report-row"><span>Продукты</span><span class="neg">−${r.products} ₽</span></div>
+      <div class="report-row"><span>Масло</span><span class="neg">−${r.oil} ₽</span></div>
+      <div class="report-row"><span>Электричество</span><span class="neg">−${r.electricity} ₽</span></div>
+      <div class="report-row"><span>Аренда</span><span class="neg">−${r.rent} ₽</span></div>
+      <div class="report-row"><span>Зарплата</span><span class="neg">−${r.salary} ₽</span></div>
+      <div class="report-row"><span>Доставка (курьер)</span><span class="neg">−${r.delivery} ₽</span></div>
+      <div class="report-total"><span>Прибыль</span><span style="color:${r.profit>=0?'#8be9a0':'#ff6b6b'}">${r.profit>=0?'+':''}${r.profit.toLocaleString('ru')} ₽</span></div>
+    `;
+  }
+  document.getElementById('phoneOverlay').classList.add('show');
+}
+function closePhone() { document.getElementById('phoneOverlay').classList.remove('show'); }
+
+// ================== УТИЛИТЫ ==================
+function showFloat(text, color) {
+  const f = document.createElement('div');
+  f.style.cssText = 'position:fixed;left:50%;top:40%;transform:translateX(-50%);font-weight:800;font-size:20px;color:'+color+';pointer-events:none;z-index:999;animation:floatUp .9s ease-out forwards;';
+  f.textContent = text;
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(), 900);
+}
+const style = document.createElement('style');
+style.textContent = '@keyframes floatUp{to{transform:translate(-50%,-70px);opacity:0}}';
+document.head.appendChild(style);
+
+function showToast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (err?' err':'');
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.className='toast', 2200);
+}
+
+// ================== КЛИКИ ==================
+document.addEventListener('click', (e)=>{
+  const up = e.target.closest('[data-up]');
+  if (up) {
+    const u = UPGRADES.find(x=>x.id===up.dataset.up);
+    if (u) {
+      const cost = Math.floor(u.cost());
+      if (S.money >= cost) { S.money -= cost; u.buy(); if (u.id==='staff') S.staff++; showToast('Куплено'); render(); }
+      else showToast('Не хватает денег', true);
+    }
+    return;
+  }
+  const biz = e.target.closest('[data-biz]');
+  if (biz) {
+    const b = BIZ.find(x=>x.id===biz.dataset.biz);
+    if (b && !S.biz[b.id] && S.money >= b.cost) {
+      S.money -= b.cost; S.biz[b.id]=true; S.rep += b.rep;
+      if (b.id==='kiosk') S.staff += 2;
+      if (b.id==='cafe') S.priceMult = 1.5;
+      if (b.id==='chain') S.chainMult = 3;
+      showToast('Открыто: ' + b.name);
+      if (b.id==='delivery') renderOrders();
+      render();
+    } else showToast('Не хватает денег', true);
+    return;
+  }
+  const loc = e.target.closest('[data-loc]');
+  if (loc) {
+    const l = LOCATIONS.find(x=>x.id===loc.dataset.loc);
+    if (!l) return;
+    if (!S.ownedLocs.includes(l.id)) {
+      if (S.money >= l.rent*3) { S.money -= l.rent*3; S.ownedLocs.push(l.id); S.loc = l.id; showToast('Арендовано: '+l.name); }
+      else showToast('Не хватает на аренду (3×'+l.rent+')', true);
+    } else { S.loc = l.id; showToast('Переехали: '+l.name); }
+    render();
+    return;
+  }
+  const tab = e.target.closest('.tab');
+  if (tab && tab.dataset.tab) {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    ['main','upgrades','biz','staff'].forEach(id=>{
+      const el = document.getElementById('tab-'+id);
+      if (el) el.classList.toggle('hidden', id!==tab.dataset.tab);
+    });
+  }
+});
+</script>
+</body>
+</html>
